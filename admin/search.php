@@ -38,7 +38,7 @@ if(isset($_SESSION['adminuser']))
 							if($row2["Dept"] == $row["Dept"])
 								{
 								echo "<tr><td>" . $row["UserName"]. "</td><td>" . $row["EmpName"]. "</td><td>" . $row["EmpEmail"]."</td><td>".$row["Dept"]."</td><td>".$row["EarnLeave"]."</td><td>".$row["SickLeave"]."</td><td>".$row["CasualLeave"]."</td><br>";
-								echo "<td><a href = 'empdelete.php?id=".$row["id"]."&user=".$row["UserName"]."'>Delete This User</a></td></tr>";
+								echo "<td><a href = 'empdelete.php'>Delete Employee</a></td></tr>";
 								$count++;
 								}
 							}
@@ -53,12 +53,12 @@ if(isset($_SESSION['adminuser']))
 		}
 	}
   }
-  else
-	{
-	echo "<div class = 'textview'>";
-	echo  "Please enter a search query ";
-	echo "<a href = 'searchemp.php'>try again?</a>";
-	}
+	else
+		{
+		echo "<div class = 'textview'>";
+		echo  "Please enter a search query ";
+		echo "<a href = 'empdelete.php'>try again?</a>";
+		}
   echo "</div>";
 }
 else

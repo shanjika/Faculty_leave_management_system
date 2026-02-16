@@ -65,7 +65,14 @@ if(isset($_SESSION['adminuser']))
 							echo "</tr>";
 							$count++;
 							}
-						echo $count." Leave(s)";
+						echo "<tr><td colspan='7' style='text-align:center;padding:10px;background:#e8f4f8;'><strong>".$count." Leave Request(s) Pending</strong></td></tr>";
+					}
+				else
+					{
+						echo "<div style='background:#fff;padding:40px;text-align:center;border-radius:8px;margin:20px 0;'>";
+						echo "<h3 style='color:#27ae60;margin-bottom:10px;'>✅ No Pending Requests</h3>";
+						echo "<p style='color:#666;font-size:14px;'>All leave requests have been processed. No pending requests found.</p>";
+						echo "</div>";
 					}
 				echo "</table>";
 				}
@@ -80,6 +87,10 @@ else
 	{
 	header('location:index.php?err='.urlencode('Please login first to view this page !'));
 	}
+	// Add single Back button at bottom, after all content
+	echo '<div style="display:flex;justify-content:center;margin:40px 0 0 0;">';
+	echo '<button type="button" style="font-size:18px;padding:12px 36px;font-weight:700;border:none;border-radius:6px;background:#f0f0f0;color:#333;cursor:pointer;transition:all 0.2s;" onclick="window.location.href=\'home.php\'">← Back</button>';
+	echo '</div>';
 ?>
 </div>
 </center>

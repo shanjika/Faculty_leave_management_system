@@ -73,7 +73,7 @@ if(isset($_SESSION['adminuser']))
 							$sql4 = "UPDATE emp_leaves SET Status = 'Granted' WHERE id = '".$id."'";
 							if($conn->query($sql4) === TRUE)
 								{
-								$msg = "Your Leave Has Been Granted Successfully ! \nEmployee Name : ".$row['EmpName']."\nLeave Type : ".$row['LeaveType']."\nNo. Of Leave Days : ".$row['LeaveDays']."\nStarting Date : ".$row['StartDate']."\nEnd date : ".$row['EndDate']."\n\n\nThanks,\nwebadmin, Leave Management System";
+								$msg = "<html><body style='font-family:Arial,sans-serif'><div style='max-width:600px'><h2 style='color:#27ae60;text-align:center'>✅ Leave Request Approved</h2><p>Dear <strong>".$row['EmpName']."</strong>,</p><p>We are pleased to inform you that your leave request has been <strong style='color:#27ae60'>APPROVED</strong>.</p><table style='width:100%;border-collapse:collapse;margin:20px 0'><tr style='background:#f5f5f5'><td style='padding:10px;font-weight:bold;border:1px solid #ddd'>Leave Type:</td><td style='padding:10px;border:1px solid #ddd'>".$row['LeaveType']."</td></tr><tr><td style='padding:10px;font-weight:bold;border:1px solid #ddd;background:#f5f5f5'>Number of Days:</td><td style='padding:10px;border:1px solid #ddd'>".$row['LeaveDays']." days</td></tr><tr style='background:#f5f5f5'><td style='padding:10px;font-weight:bold;border:1px solid #ddd'>Start Date:</td><td style='padding:10px;border:1px solid #ddd'>".$row['StartDate']."</td></tr><tr><td style='padding:10px;font-weight:bold;border:1px solid #ddd;background:#f5f5f5'>End Date:</td><td style='padding:10px;border:1px solid #ddd'>".$row['EndDate']."</td></tr></table><p style='margin-top:20px'>Please log in to your dashboard to download your approval certificate if needed.</p><p style='color:#666;font-size:12px;margin-top:30px'>Best regards,<br><strong>Leave Management System</strong><br>Human Resources Department</p></div></body></html>";
 								$status = mailer($email,$msg);
 								if($status === TRUE)
 									{
@@ -85,6 +85,14 @@ if(isset($_SESSION['adminuser']))
 				}
 			
 			}
+		}
+	else
+		{
+			echo "<div style='background:#fff;padding:40px;text-align:center;border-radius:8px;margin:20px 0;'>";
+			echo "<h3 style='color:#e74c3c;margin-bottom:10px;'>❌ Leave Request Not Found</h3>";
+			echo "<p style='color:#666;font-size:14px;margin-bottom:15px;'>The leave request you are trying to approve does not exist or has already been processed.</p>";
+			echo "<a href='view_leaves.php' style='display:inline-block;background:#3498db;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:10px;'>← Back to Requests</a>";
+			echo "</div>";
 		}
 	}
 	else

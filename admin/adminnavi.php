@@ -2,106 +2,69 @@
 <html>
 <head>
 <style>
-ul {
-    list-style-type: none;
+body {
+    font-family: "Segoe UI Light","Segoe WPC","Segoe UI", Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
+    font-size: 17px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: 500;
+    color: #000000;
     margin: 0;
     padding: 0;
-    overflow: hidden;
-    background-color: #f0f0f0;
-	font-family: "Segoe UI Light","Segoe WPC","Segoe UI",
-              Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
-  font-size: 17px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: 500;
-	color: #000000;
 }
 
-li {
-    float: left;
-	font-family: "Segoe UI Light","Segoe WPC","Segoe UI",
-              Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
-  font-size: 17px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: 500;
+button {
+    padding: 10px 22px;
+    border-radius: 6px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
-li a, .dropbtn {
-    display: inline-block;
-    color: white;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-	font-family: "Segoe UI Light","Segoe WPC","Segoe UI",
-              Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
-  font-size: 17px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: 500;
-	color : #000000;
+.back-button {
+    background: #e0e0e0;
+    color: #333;
 }
 
-li a:hover, .dropdown:hover .dropbtn {
-    background-color: #949494;
+.logout-button {
+    background: #e74c3c;
+    color: #fff;
 }
 
-li.dropdown {
-    display: inline-block;
-}
-
-.dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: #f0f0f0;
-    min-width: 160px;
-	font-family: "Segoe UI Light","Segoe WPC","Segoe UI",
-              Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
-  font-size: 17px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: 500;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-	color: #000000;
-}
-
-.dropdown-content a {
-    color: #fefefe;
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-    text-align: left;
-	font-family: "Segoe UI Light","Segoe WPC","Segoe UI",
-              Helvetica, Arial, "Arial Unicode MS", Sans-Serif;
-  font-size: 17px;
-	font-style: normal;
-	font-variant: normal;
-	font-weight: 500;
-	color: #000000;
-}
-
-.dropdown-content a:hover {background-color: #949494;}
-
-.dropdown:hover .dropdown-content {
-    display: block;
+.container {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    margin: 18px 0 30px 0;
 }
 </style>
 </head>
 <body>
 
-<ul>
-  <li><a href="index.php">Admin Home</a></li>
-  <li class="dropdown">
-    <a href="#" class="dropbtn">Admin Tools</a>
-    <div class="dropdown-content">
-	  <a href = "register">Register A New Employee</a>
-	  <a href="searchemp.php">Remove An Employee</a>
-      <a href = "view_leaves.php">Accept/Reject Leave</a>
-	  <a href = "set_leaves.php">Set Default Leave</a>
-	  <a href = "extract_leaves.php">Extract Leaves</a>
-    </div>
-  </li>
-  <li><a href = "logout.php">Logout</a></li>
-</ul>
+  <?php
+  // Minimal admin nav: just Back and Logout buttons
+  $current = basename($_SERVER['PHP_SELF']);
+  $back = 'home.php';
+  if ($current === 'home.php' || $current === 'index.php') {
+      $back = false;
+  }
+  if ($back) {
+      echo '<button class="back-button" onclick="window.location.href=\''.$back.'\'">← Back</button>';
+  }
+  ?>
+<?php
+// Minimal admin nav: just Back and Logout buttons
+$current = basename($_SERVER['PHP_SELF']);
+$back = 'home.php';
+if ($current === 'home.php' || $current === 'index.php') {
+    $back = false;
+}
+if ($back) {
+    echo '<button class="back-button" onclick="window.location.href=\''.$back.'\'">← Back</button>';
+}
+?>
+<button class="logout-button" style="position:fixed;top:40px;right:80px;z-index:1000;" onclick="window.location.href='logout.php'">Logout</button>
+
 </body>
 </html>

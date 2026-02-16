@@ -70,10 +70,12 @@
 <nav class="client-nav">
     <ul>
         <li><a href="index.php">Client Home</a></li>
+        <li><a href="dashboard.php">📊 Dashboard</a></li>
         <li><a href="request_leave.php">Request Leave</a></li>
         <li>
             <a href="#">Me</a>
             <div class="dropdown-content">
+                <a href="profile.php">👤 My Profile</a>
                 <a href="my_leaves.php">My All Leave Requests</a>
                 <a href="changepass.php">Change Password</a>
                 <a href="logout.php">Logout</a>
