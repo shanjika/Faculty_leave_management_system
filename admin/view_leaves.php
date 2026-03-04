@@ -87,10 +87,7 @@ else
 	{
 	header('location:index.php?err='.urlencode('Please login first to view this page !'));
 	}
-	// Add single Back button at bottom, after all content
-	echo '<div style="display:flex;justify-content:center;margin:40px 0 0 0;">';
-	echo '<button type="button" style="font-size:18px;padding:12px 36px;font-weight:700;border:none;border-radius:6px;background:#f0f0f0;color:#333;cursor:pointer;transition:all 0.2s;" onclick="window.location.href=\'home.php\'">← Back</button>';
-	echo '</div>';
+	// ...existing code... (removed extra back button)
 ?>
 </div>
 </center>

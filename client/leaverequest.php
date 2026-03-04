@@ -17,118 +17,50 @@ if(isset($_SESSION['user']))
 		{
 		while($row = $result->fetch_assoc())
 			{
-			echo "<body>";
-			echo "<h2>Request For A Leave for : ".$_POST['type']."</h2>";
-			echo "<form action = 'request_confirm.php' method = 'post'>";
-			echo "<table>";
-			echo "<input type = 'hidden' name = 'empname' value = '".$row["EmpName"]."'>";
-			echo "<input type = 'hidden' name = 'designation' value = '".$row["Designation"]."'>";
-			echo "<input type = 'hidden' name = 'dept' value = '".$row["Dept"]."'>";
-			echo "<input type = 'hidden' name = 'emptype' value = '".$row["EmpType"]."'>";
-			echo "<input type = 'hidden' name = 'empfee' value = '".$row["EmpFee"]."'>";
-			
-			echo "<tr><th> * Starting Date : </th>
-					<td>
-					<select name = 'leavedate' class = 'textbox shadow selected' style='width:50px;'>
-						<option value = '01'>1</option>
-						<option value = '02'>2</option>
-						<option value = '03'>3</option>
-						<option value = '04'>4</option>
-						<option value = '05'>5</option>
-						<option value = '06'>6</option>
-						<option value = '07'>7</option>
-						<option value = '08'>8</option>
-						<option value = '09'>9</option>
-						<option value = '10'>10</option>
-						<option value = '11'>11</option>
-						<option value = '12'>12</option>
-						<option value = '13'>13</option>
-						<option value = '14'>14</option>
-						<option value = '15'>15</option>
-						<option value = '16'>16</option>
-						<option value = '17'>17</option>
-						<option value = '18'>18</option>
-						<option value = '19'>19</option>
-						<option value = '20'>20</option>
-						<option value = '21'>21</option>
-						<option value = '22'>22</option>
-						<option value = '23'>23</option>
-						<option value = '24'>24</option>
-						<option value = '25'>25</option>
-						<option value = '26'>26</option>
-						<option value = '27'>27</option>
-						<option value = '28'>28</option>
-						<option value = '29'>29</option>
-						<option value = '30'>30</option>
-						<option value = '31'>31</option>
-					</select>
-					<select name = 'leavemonth' class = 'textbox shadow selected'>
-						<option value = '01'>1</option>
-						<option value = '02'>2</option>
-						<option value = '03'>3</option>
-						<option value = '04'>4</option>
-						<option value = '05'>5</option>
-						<option value = '06'>6</option>
-						<option value = '07'>7</option>
-						<option value = '08'>8</option>
-						<option value = '09'>9</option>
-						<option value = '10'>10</option>
-						<option value = '11'>11</option>
-						<option value = '12'>12</option>
-					</select>
-					<select name = 'leaveyear' class = 'textbox shadow selected'>
-						<option value = '".date("Y")."'>".date("Y")."</option>
-					</select>
-					</td>
-					</tr>";
-			echo "<input type = 'hidden' name = 'leavetype' value = '".$_POST['type']."'>";
-			echo "<tr><th> * No Of Leave Days : </th><td><input type = 'number' min = '1' name = 'leavedays' class = 'textbox shadow selected' step = '1'></td></tr>";
-			echo "<tr><th> * Resaon For Leave : </th><td><input type = 'text' name = 'leavereason' class = 'textbox shadow selected'></td></tr>";
-			
-			echo "<table>
-					<tr>
-					<th>Date </th>
-					<th>Time</th>		
-					<th>Semester</th>
-					<th>Division/Batch</th>
-					<th>Room No.</th>
-					<th>Subject</th>
-					<th>Staff  Member Who Will Engage Class</th>
-					</tr>
-					<tr>
-					<td><input type = 'text' name = 'value1' class = 'textbox shadow selected' style='width:90px;'></td>
-					<td><input type='text' name = 'value2' class = 'textbox shadow selected' style='width:100px;'></td>		
-					<td><input type='number' min = '1' max = '8' step = '1' name = 'value3' class = 'textbox shadow selected' style='width:40px;'></td>
-					<td><input type='text' name = 'value4' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value5' class = 'textbox shadow selected' style='width:100px;'></td>
-					<td><input type='text' name = 'value6' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value7' class = 'textbox shadow selected' style='width:50px;'></td>
-					</tr>
-					<tr>
-					<td><input type = 'text' name = 'value8' class = 'textbox shadow selected' style='width:90px;'></td>
-					<td><input type='text' name = 'value9' class = 'textbox shadow selected' style='width:100px;'></td>		
-					<td><input type='number' min = '1' max = '8' step = '1' name = 'value10' class = 'textbox shadow selected' style='width:40px;'></td>
-					<td><input type='text' name = 'value11' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value12' class = 'textbox shadow selected' style='width:100px;'></td>
-					<td><input type='text' name = 'value13' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value14' class = 'textbox shadow selected' style='width:50px;'></td>
-					</tr>
-					<tr>
-					<td><input type = 'text' name = 'value15' class = 'textbox shadow selected' style='width:90px;'></td>
-					<td><input type='text' name = 'value16' class = 'textbox shadow selected' style='width:100px;'></td>		
-					<td><input type='number' min = '1' max = '8' step = '1' name = 'value17' class = 'textbox shadow selected' style='width:40px;'></td>
-					<td><input type='text' name = 'value18' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value19' class = 'textbox shadow selected' style='width:100px;'></td>
-					<td><input type='text' name = 'value20' class = 'textbox shadow selected' style='width:50px;'></td>
-					<td><input type='text' name = 'value21' class = 'textbox shadow selected' style='width:50px;'></td>
-					</tr>
-					</font>
-					</table>";
-			echo "<br/><tr><td><input type = 'submit' value = 'Request a Leave' class = 'login-button shadow'></td></tr>";
-			echo "</form>";
-			echo "</div>";
-			echo "</center>";
-			echo "</body>";
+			   echo "<body>";
+			   echo "<h2 style='text-align:center; margin-top:2rem; font-size:2.2rem;'>Request For A Leave for : " . $_POST['type'] . "</h2>";
+			   echo "<form action='request_confirm.php' method='post' style='display:flex; justify-content:center; align-items:center; min-height:60vh;'>";
+			   echo "<div style='background:#f8f9fa; padding:2.5rem 2.5rem 2rem 2.5rem; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,0.10); width:400px;'>";
+			   echo "<input type='hidden' name='empname' value='" . $row["EmpName"] . "'>";
+			   echo "<input type='hidden' name='designation' value='" . $row["Designation"] . "'>";
+			   echo "<input type='hidden' name='dept' value='" . $row["Dept"] . "'>";
+			   echo "<input type='hidden' name='emptype' value='" . $row["EmpType"] . "'>";
+			   echo "<input type='hidden' name='empfee' value='" . $row["EmpFee"] . "'>";
+			   echo "<input type='hidden' name='leavetype' value='" . $_POST['type'] . "'>";
+			   echo "<div style='margin-bottom:1.5rem;'>";
+			   echo "<label style='font-weight:600; font-size:1.1rem;'>* Starting Date :</label><br>";
+			   echo "<div style='display:flex; gap:0.5rem;'>";
+			   echo "<select name='leavedate' class='textbox shadow selected' style='width:60px; font-size:1rem;'>";
+			   for($d=1;$d<=31;$d++) echo "<option value='".str_pad($d,2,'0',STR_PAD_LEFT)."'>".$d."</option>";
+			   echo "</select>";
+			   echo "<select name='leavemonth' class='textbox shadow selected' style='width:60px; font-size:1rem;'>";
+			   for($m=1;$m<=12;$m++) echo "<option value='".str_pad($m,2,'0',STR_PAD_LEFT)."'>".$m."</option>";
+			   echo "</select>";
+			   echo "<select name='leaveyear' class='textbox shadow selected' style='width:80px; font-size:1rem;'>";
+			   echo "<option value='".date('Y')."'>".date('Y')."</option>";
+			   echo "</select>";
+			   echo "</div></div>";
+			   echo "<div style='margin-bottom:1.5rem;'>";
+			   echo "<label style='font-weight:600; font-size:1.1rem;'>* Ending Date :</label><br>";
+			   echo "<div style='display:flex; gap:0.5rem;'>";
+			   echo "<select name='enddate' class='textbox shadow selected' style='width:60px; font-size:1rem;'>";
+			   for($d=1;$d<=31;$d++) echo "<option value='".str_pad($d,2,'0',STR_PAD_LEFT)."'>".$d."</option>";
+			   echo "</select>";
+			   echo "<select name='endmonth' class='textbox shadow selected' style='width:60px; font-size:1rem;'>";
+			   for($m=1;$m<=12;$m++) echo "<option value='".str_pad($m,2,'0',STR_PAD_LEFT)."'>".$m."</option>";
+			   echo "</select>";
+			   echo "<select name='endyear' class='textbox shadow selected' style='width:80px; font-size:1rem;'>";
+			   echo "<option value='".date('Y')."'>".date('Y')."</option>";
+			   echo "</select>";
+			   echo "</div></div>";
+			   echo "<div style='margin-bottom:2rem;'>";
+			   echo "<label style='font-weight:600; font-size:1.1rem;'>* Reason For Leave :</label><br>";
+			   echo "<textarea name='leavereason' class='textbox shadow selected' rows='3' style='width:100%; font-size:1rem; border-radius:8px; padding:0.5rem;'></textarea>";
+			   echo "</div>";
+			   echo "<div style='text-align:center;'><input type='submit' value='Request a Leave' class='login-button shadow' style='font-size:1.1rem; padding:0.7rem 2.5rem; border-radius:10px; background:#1976d2; color:#fff; border:none; box-shadow:0 2px 8px rgba(25,118,210,0.08); cursor:pointer;'></div>";
+			   echo "</div>";
+			   echo "</form>";
+			   echo "</body>";
 			}
 		}
 	}

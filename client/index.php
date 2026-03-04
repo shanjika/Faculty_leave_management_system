@@ -194,7 +194,7 @@ function valid() {
         </form>
 
         <p class="info-text">
-            Your password is your date of birth (dd-mm-yyyy)
+            Your password is your username  by default.
         </p>
 
     </div>
