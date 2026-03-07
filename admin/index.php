@@ -13,7 +13,7 @@ if(isset($_SESSION['adminuser']))
 	echo "<center>";
 	echo "<h1>Leave Management System</h1>";
 	include 'navi.php';
-	echo "<h2>Admin Login</h2>";
+	echo "<h2>Authority Login</h2>";
 	echo "<form name = 'login' action = 'validator.php' method = 'post' onsubmit = 'return valid()'>";
 	if(isset($_GET['err']))
 		{

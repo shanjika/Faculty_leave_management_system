@@ -104,7 +104,7 @@ footer {
               font-weight:600;
               min-width:160px;
               text-align:center;">
-        Client Login
+        Faculty Login
     </a>
 
     <a href="admin/index.php"
@@ -118,7 +118,7 @@ footer {
               font-weight:600;
               min-width:160px;
               text-align:center;">
-        Admin Login
+        Authority Login
     </a>
 
 </div>

@@ -91,7 +91,7 @@
 
 <nav class="client-nav">
     <ul>
-        <li><a href="index.php">Client Home</a></li>
+        <li><a href="index.php">Faculty Home</a></li>
         <li><a href="dashboard.php">📊 Dashboard</a></li>
         <li><a href="request_leave.php">Request Leave</a></li>
         <li>

@@ -1,105 +1,141 @@
-<link rel="shortcut icon" type="image/png" href="favicon.png"/>
 <?php
 session_start();
+include 'connect.php';
+
+if(!isset($_SESSION['adminuser'])){
+    header('location:index.php?err='.urlencode('Please Login First!'));
+    exit;
+}
+
+$id    = filter_var($_GET['id']    ?? 0, FILTER_VALIDATE_INT);
+$empid = filter_var($_GET['empid'] ?? 0, FILTER_VALIDATE_INT);
+
+if(!$id || !$empid){
+    header('location:view_leaves.php');
+    exit;
+}
+
+// Get leave record
+$resLeave = $conn->query("SELECT * FROM emp_leaves WHERE id='$id'");
+if(!$resLeave || $resLeave->num_rows === 0){
+    header('location:view_leaves.php?err='.urlencode('Leave record not found!'));
+    exit;
+}
+$leave = $resLeave->fetch_assoc();
+
+// Get employee record
+$resEmp = $conn->query("SELECT * FROM employees WHERE id='$empid'");
+if(!$resEmp || $resEmp->num_rows === 0){
+    header('location:view_leaves.php?err='.urlencode('Employee record not found!'));
+    exit;
+}
+$emp       = $resEmp->fetch_assoc();
+$leaveDays = (int)$leave['LeaveDays'];
+$leaveType = $leave['LeaveType'];
+
+// Deduct balance only for standard leave types
+$updateSql = '';
+if($leaveType === 'Medical Leave' || $leaveType === 'Sick Leave'){
+    $newBal = max(0, (int)$emp['SickLeave'] - $leaveDays);
+    $updateSql = "UPDATE employees SET SickLeave='$newBal' WHERE id='$empid'";
+} elseif($leaveType === 'Casual Leave'){
+    $newBal = max(0, (int)$emp['CasualLeave'] - $leaveDays);
+    $updateSql = "UPDATE employees SET CasualLeave='$newBal' WHERE id='$empid'";
+} elseif($leaveType === 'Earn Leave'){
+    $newBal = max(0, (int)$emp['EarnLeave'] - $leaveDays);
+    $updateSql = "UPDATE employees SET EarnLeave='$newBal' WHERE id='$empid'";
+}
+// Loss of Pay, On Duty, Special Leave — no balance deduction
+
+// Run balance update if needed
+if($updateSql){
+    $conn->query($updateSql);
+}
+
+// Update leave status to Granted
+$conn->query("UPDATE emp_leaves SET Status='Granted' WHERE id='$id'");
+
+$conn->close();
 ?>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>::Leave Management::</title>
+<meta charset="UTF-8">
+<title>Leave Approved</title>
+<link rel="stylesheet" href="style.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; }
+.wrap { max-width:560px; margin:60px auto; padding:20px; }
+.card {
+    background:#fff; border-radius:18px;
+    box-shadow:0 8px 32px rgba(0,0,0,.10);
+    padding:40px 36px; text-align:center;
+}
+.big-icon { font-size:4rem; }
+.card h2  { color:#065f46; font-size:1.6rem; margin:16px 0 8px; }
+.card p   { color:#374151; font-size:.95rem; margin-bottom:20px; }
+.detail-block { margin:20px 0; text-align:left; }
+.detail-row {
+    display:flex; justify-content:space-between;
+    border-bottom:1px solid #f1f5f9; padding:10px 0; font-size:.9rem;
+}
+.detail-row .lbl { color:#64748b; font-weight:600; }
+.detail-row .val { color:#1e293b; font-weight:700; text-align:right; }
+.status-granted { color:#065f46; font-weight:800; }
+.btn-row { display:flex; gap:12px; margin-top:24px; }
+.btn {
+    flex:1; padding:13px; border-radius:10px;
+    font-weight:700; font-size:.95rem;
+    text-decoration:none; text-align:center;
+    transition:opacity .2s; display:block;
+}
+.btn-primary   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.btn-secondary { background:#f1f5f9; color:#374151; }
+.btn:hover { opacity:.88; }
+</style>
 </head>
 <body>
-<link rel = "stylesheet" href = "style.css">
-<div class = "textview">
-<?php
-echo "<h1>Leave Management System</h1>";
-include 'adminnavi.php';
-include 'connect.php';
-include 'mailer.php';
+<?php include 'adminnavi.php'; ?>
 
-if(filter_var($_GET['id'],FILTER_VALIDATE_INT) && filter_var($_GET['empid'],FILTER_VALIDATE_INT))
-	{
-		$id =$_GET['id'];
-		$empid =$_GET['empid'];
-	}
-else
-	{
-		header('location:home.php');
-	}
-if(isset($_SESSION['adminuser']))
-	{
-	$sql = "SELECT id,EmpName,LeaveType,RequestDate,Status,LeaveDays,StartDate,EndDate FROM emp_leaves WHERE id='".$id."'";
-	$result = $conn->query($sql);
-	if($result->num_rows > 0)
-		{
-		while($row = $result->fetch_assoc())
-			{
-			$leavedays = $row["LeaveDays"];
-			$sql2 = "SELECT id,EarnLeave,SickLeave,CasualLeave,EmpEmail FROM employees WHERE id = '".$empid."'";
-			$result2 = $conn->query($sql2);
-			if($result2->num_rows > 0)
-				{
-				while($row2 = $result2->fetch_assoc())
-					{
-					$earnleave = $row2["EarnLeave"];
-					$diff1 = $earnleave-$leavedays;
-					$sickleave = $row2["SickLeave"];
-					$diff2 = $sickleave-$leavedays;
-					$casualleave = $row2["CasualLeave"];
-					$diff3 = $casualleave-$leavedays;
-					$email = $row2["EmpEmail"];
-					
-					if($row["LeaveType"] == "Earn Leave")
-						{
-						if($diff1 < 0)
-							echo "Processing Error !";
-						else
-							$sql3 = "UPDATE employees SET EarnLeave = '".$diff1."' WHERE id = '".$empid."'";
-						}
-					else if($row["LeaveType"] == "Sick Leave")
-						{
-						if($diff2 < 0)
-							echo "Processing Error !";
-						else
-							$sql3 = "UPDATE employees SET SickLeave = '".$diff2."' WHERE id = '".$empid."'";
-						}
-					else if($row["LeaveType"] == "Casual Leave")
-						{
-						if($diff3 < 0)
-							echo "Processing Error !";
-						else
-							$sql3 = "UPDATE employees SET CasualLeave = '".$diff3."' WHERE id = '".$empid."'";
-						}
-					if($conn->query($sql3) === TRUE)
-							{
-							$sql4 = "UPDATE emp_leaves SET Status = 'Granted' WHERE id = '".$id."'";
-							if($conn->query($sql4) === TRUE)
-								{
-								$msg = "<html><body style='font-family:Arial,sans-serif'><div style='max-width:600px'><h2 style='color:#27ae60;text-align:center'>✅ Leave Request Approved</h2><p>Dear <strong>".$row['EmpName']."</strong>,</p><p>We are pleased to inform you that your leave request has been <strong style='color:#27ae60'>APPROVED</strong>.</p><table style='width:100%;border-collapse:collapse;margin:20px 0'><tr style='background:#f5f5f5'><td style='padding:10px;font-weight:bold;border:1px solid #ddd'>Leave Type:</td><td style='padding:10px;border:1px solid #ddd'>".$row['LeaveType']."</td></tr><tr><td style='padding:10px;font-weight:bold;border:1px solid #ddd;background:#f5f5f5'>Number of Days:</td><td style='padding:10px;border:1px solid #ddd'>".$row['LeaveDays']." days</td></tr><tr style='background:#f5f5f5'><td style='padding:10px;font-weight:bold;border:1px solid #ddd'>Start Date:</td><td style='padding:10px;border:1px solid #ddd'>".$row['StartDate']."</td></tr><tr><td style='padding:10px;font-weight:bold;border:1px solid #ddd;background:#f5f5f5'>End Date:</td><td style='padding:10px;border:1px solid #ddd'>".$row['EndDate']."</td></tr></table><p style='margin-top:20px'>Please log in to your dashboard to download your approval certificate if needed.</p><p style='color:#666;font-size:12px;margin-top:30px'>Best regards,<br><strong>Leave Management System</strong><br>Human Resources Department</p></div></body></html>";
-								$status = mailer($email,$msg);
-								if($status === TRUE)
-									{
-									echo "The Leave Request Status mail For ".$row['EmpName']." Has been sent to his/her registered email address !<br/>";
-									}
-								}
-							}
-					}
-				}
-			
-			}
-		}
-	else
-		{
-			echo "<div style='background:#fff;padding:40px;text-align:center;border-radius:8px;margin:20px 0;'>";
-			echo "<h3 style='color:#e74c3c;margin-bottom:10px;'>❌ Leave Request Not Found</h3>";
-			echo "<p style='color:#666;font-size:14px;margin-bottom:15px;'>The leave request you are trying to approve does not exist or has already been processed.</p>";
-			echo "<a href='view_leaves.php' style='display:inline-block;background:#3498db;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:10px;'>← Back to Requests</a>";
-			echo "</div>";
-		}
-	}
-	else
-		{
-			header('location:index.php?err='.urlencode('Please Login First To Access This Page !'));
-		}
-?>
+<div class="wrap">
+<div class="card">
+    <div class="big-icon">✅</div>
+    <h2>Leave Approved!</h2>
+    <p>The leave request for <strong><?php echo htmlspecialchars($leave['EmpName']); ?></strong> has been successfully approved.</p>
+
+    <div class="detail-block">
+        <div class="detail-row">
+            <span class="lbl">Faculty Name</span>
+            <span class="val"><?php echo htmlspecialchars($leave['EmpName']); ?></span>
+        </div>
+        <div class="detail-row">
+            <span class="lbl">Leave Type</span>
+            <span class="val"><?php echo htmlspecialchars($leaveType); ?></span>
+        </div>
+        <div class="detail-row">
+            <span class="lbl">Days</span>
+            <span class="val"><?php echo $leaveDays; ?> day(s)</span>
+        </div>
+        <div class="detail-row">
+            <span class="lbl">From</span>
+            <span class="val"><?php echo htmlspecialchars($leave['StartDate']); ?></span>
+        </div>
+        <div class="detail-row">
+            <span class="lbl">To</span>
+            <span class="val"><?php echo htmlspecialchars($leave['EndDate']); ?></span>
+        </div>
+        <div class="detail-row">
+            <span class="lbl">Status</span>
+            <span class="val status-granted">✅ Granted</span>
+        </div>
+    </div>
+
+    <div class="btn-row">
+        <a href="view_leaves.php" class="btn btn-secondary">← View Requests</a>
+        <a href="home.php"        class="btn btn-primary">🏠 Home</a>
+    </div>
+</div>
 </div>
 </body>
 </html>

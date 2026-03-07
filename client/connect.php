@@ -1,14 +1,12 @@
 <?php
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "phpdb";
+$servername = "127.0.0.1";
+$username   = "root";
+$password   = "";
+$dbname     = "phpdb";
 
-// Create connection (port 3307)
 $conn = new mysqli($servername, $username, $password, $dbname, 3307);
 
-// Check connection
-if ($conn->connect_error) {
+if($conn->connect_error){
     die("Connection failed: " . $conn->connect_error);
 }
 ?>

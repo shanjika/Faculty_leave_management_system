@@ -151,7 +151,7 @@ function valid() {
     <div class="login-card">
 
         <h1>Leave Management System</h1>
-        <h2>Client Login</h2>
+        <h2>Faculty Login</h2>
 
         <?php
         if (isset($_GET['err'])) {
