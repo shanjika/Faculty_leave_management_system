@@ -64,6 +64,8 @@ if($emp){
 <title>Leave Dashboard</title>
 <link rel="stylesheet" href="style.css">
 <style>
+    .cancel-link { color:#e53e3e; text-decoration:none; font-weight:600; font-size:13px; }
+.cancel-link:hover { text-decoration:underline; }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#f5f7fa; color:#333; }
 
@@ -363,7 +365,12 @@ if($res2 && $res2->num_rows){
         echo "<td>".htmlspecialchars($rr['StartDate'])."</td>";
         echo "<td>".htmlspecialchars($rr['EndDate'])."</td>";
         echo "<td><span class='status-badge $sc'>".htmlspecialchars($rr['Status'])."</span></td>";
-        echo "<td><a href='download.php?id=".urlencode($rr['id'])."' class='action-link'>📄 Download</a></td>";
+echo "<td style='display:flex;gap:10px;align-items:center;'>";
+echo "<a href='download.php?id=".urlencode($rr['id'])."' class='action-link'>📄 Download</a>";
+if($rr['Status'] === 'Requested'){
+    echo " &nbsp;<a href='cancel_leave.php?id=".urlencode($rr['id'])."' class='cancel-link' onclick=\"return confirm('Are you sure you want to cancel this leave request?')\">🗑 Cancel</a>";
+}
+echo "</td>";
         echo "</tr>";
     }
     echo "</tbody></table>";

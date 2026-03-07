@@ -4,111 +4,222 @@ session_start();
 <title>View Faculty Leaves</title>
 <link rel="stylesheet" type="text/css" href="style.css">
 <link rel="shortcut icon" type="image/png" href="favicon.png"/>
-<link rel="stylesheet" type="text/css" href="table.css">
 <style>
-.badge-type { display:inline-block; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; white-space:nowrap; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; }
+.page-wrap { max-width:1200px; margin:0 auto; padding:30px 20px; }
+h1 { color:#1e3a8a; font-size:1.8rem; margin-bottom:6px; }
+.sub { color:#64748b; font-size:.9rem; margin-bottom:24px; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:3px solid #e2e8f0; }
+.tab-btn {
+    padding:12px 28px; background:none; border:none;
+    font-size:.95rem; font-weight:600; color:#64748b;
+    cursor:pointer; border-bottom:3px solid transparent;
+    margin-bottom:-3px; transition:all .2s;
+}
+.tab-btn.active { color:#1e3a8a; border-bottom-color:#667eea; }
+.tab-btn:hover  { color:#1e3a8a; background:#f8faff; }
+.tab-badge {
+    display:inline-block; background:#e53e3e; color:#fff;
+    font-size:.7rem; font-weight:800; padding:1px 7px;
+    border-radius:99px; margin-left:6px; vertical-align:middle;
+}
+.tab-badge.green { background:#38a169; }
+
+/* Cards */
+.leave-card {
+    background:#fff; border-radius:14px;
+    box-shadow:0 4px 18px rgba(0,0,0,.07);
+    padding:20px 24px; margin-bottom:16px;
+    display:flex; justify-content:space-between;
+    align-items:center; gap:16px; flex-wrap:wrap;
+    border-left:5px solid #667eea;
+    transition:box-shadow .2s;
+}
+.leave-card:hover { box-shadow:0 8px 28px rgba(0,0,0,.12); }
+.leave-card.granted  { border-left-color:#38a169; }
+.leave-card.rejected { border-left-color:#e53e3e; }
+
+.leave-info { flex:1; min-width:200px; }
+.leave-info .name { font-size:1.05rem; font-weight:800; color:#1e293b; margin-bottom:4px; }
+.leave-info .meta { font-size:.83rem; color:#64748b; display:flex; flex-wrap:wrap; gap:8px; }
+.meta-item { background:#f1f5f9; padding:2px 10px; border-radius:99px; }
+
+.badge-type { display:inline-block; padding:3px 12px; border-radius:99px; font-size:.75rem; font-weight:700; white-space:nowrap; }
 .badge-od  { background:#d1fae5; color:#065f46; }
 .badge-sp  { background:#fce7f3; color:#9d174d; }
 .badge-std { background:#e0e7ff; color:#4338ca; }
 .badge-lop { background:#fee2e2; color:#991b1b; }
-.session-info { font-size:11px; color:#64748b; margin-top:2px; }
-.extra-info   { font-size:11px; color:#475569; margin-top:2px; font-style:italic; }
+
+.leave-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.btn-accept {
+    padding:9px 22px; background:linear-gradient(135deg,#38a169,#276749);
+    color:#fff; border:none; border-radius:8px;
+    font-weight:700; font-size:.88rem; cursor:pointer; text-decoration:none;
+    transition:opacity .2s;
+}
+.btn-reject {
+    padding:9px 22px; background:linear-gradient(135deg,#e53e3e,#c53030);
+    color:#fff; border:none; border-radius:8px;
+    font-weight:700; font-size:.88rem; cursor:pointer; text-decoration:none;
+    transition:opacity .2s;
+}
+.btn-accept:hover,.btn-reject:hover { opacity:.85; }
+
+.status-pill { padding:5px 16px; border-radius:99px; font-size:.82rem; font-weight:700; }
+.pill-granted  { background:#d1fae5; color:#065f46; }
+.pill-rejected { background:#fee2e2; color:#991b1b; }
+
+.empty-box {
+    background:#fff; border-radius:14px; padding:50px;
+    text-align:center; color:#94a3b8;
+    box-shadow:0 4px 18px rgba(0,0,0,.06);
+}
+.empty-box .big { font-size:2.5rem; margin-bottom:12px; }
+.empty-box p { font-size:1rem; }
+
+.tab-content { display:none; }
+.tab-content.active { display:block; }
 </style>
-<div class="textview">
-<center>
+
 <?php
 include 'connect.php';
-echo "<h1>Faculty Leave Management System</h1>";
 include 'adminnavi.php';
 
-$role = $_SESSION['role'] ?? 'HOD';
-
-// Block HR from this page
-if($role === 'HR'){
-    echo "<div style='background:#fee2e2;color:#991b1b;padding:20px;border-radius:10px;margin:20px;'>
-          ❌ HR does not have access to leave approvals.</div>";
-    echo "</center></div>";
+if(!isset($_SESSION['adminuser'])){
+    header('location:index.php?err='.urlencode('Please login first!'));
     exit;
 }
 
-echo "<h2>View Faculty Leave Requests</h2>";
-$count = 0;
+$role    = $_SESSION['role'] ?? 'HOD';
+if($role === 'HR'){
+    echo "<div style='background:#fee2e2;color:#991b1b;padding:20px;border-radius:10px;margin:20px;'>❌ HR does not have access to leave approvals.</div>";
+    exit;
+}
 
-if(isset($_SESSION['adminuser'])){
-    $hodUser = $conn->real_escape_string($_SESSION['adminuser']);
+$hodUser = $conn->real_escape_string($_SESSION['adminuser']);
 
-    // HOD sees only leaves of faculty assigned to them
-    $sql2 = "SELECT e.Id, e.EmpName, el.LeaveType, el.RequestDate, el.LeaveDays,
-                    el.StartDate, el.EndDate, el.id,
-                    IFNULL(el.FromSession,'') as FromSession,
-                    IFNULL(el.ToSession,'') as ToSession,
-                    IFNULL(el.ActivityID,'') as ActivityID,
-                    IFNULL(el.ActivityName,'') as ActivityName,
-                    IFNULL(el.Reason,'') as Reason
-             FROM employees e
-             INNER JOIN emp_leaves el ON e.EmpName = el.EmpName AND e.Dept = el.Dept
-             WHERE e.HodUsername = '$hodUser'
-             AND el.Status = 'Requested'";
+// Pending leaves
+$sqlPending = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.LeaveDays,
+                      el.StartDate, el.EndDate, el.id,
+                      IFNULL(el.FromSession,'') as FromSession,
+                      IFNULL(el.ToSession,'') as ToSession,
+                      IFNULL(el.ActivityID,'') as ActivityID,
+                      IFNULL(el.Reason,'') as Reason
+               FROM employees e
+               INNER JOIN emp_leaves el ON e.EmpName = el.EmpName AND e.Dept = el.Dept
+               WHERE e.HodUsername = '$hodUser' AND el.Status = 'Requested'
+               ORDER BY el.RequestDate DESC";
 
-    $result2 = $conn->query($sql2);
+// History leaves
+$sqlHistory = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.LeaveDays,
+                      el.StartDate, el.EndDate, el.id, el.Status,
+                      IFNULL(el.FromSession,'') as FromSession,
+                      IFNULL(el.ToSession,'') as ToSession,
+                      IFNULL(el.ActivityID,'') as ActivityID,
+                      IFNULL(el.Reason,'') as Reason
+               FROM employees e
+               INNER JOIN emp_leaves el ON e.EmpName = el.EmpName AND e.Dept = el.Dept
+               WHERE e.HodUsername = '$hodUser' AND el.Status IN ('Granted','Rejected')
+               ORDER BY el.RequestDate DESC LIMIT 50";
 
-    if($result2 && $result2->num_rows > 0){
-        echo "<table>";
-        echo "<tr>
-                <th>Faculty Name</th>
-                <th>Leave Type</th>
-                <th>Request Date</th>
-                <th>Days</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Details</th>
-                <th>Action</th>
-              </tr>";
-        while($row2 = $result2->fetch_assoc()){
-            $lt      = $row2['LeaveType'];
-            $isOD    = ($lt === 'On Duty');
-            $isSp    = ($lt === 'Special Leave');
-            $isLOP   = ($lt === 'Loss of Pay');
-            if($isOD)       $bc = 'badge-od';
-            elseif($isSp)   $bc = 'badge-sp';
-            elseif($isLOP)  $bc = 'badge-lop';
-            else             $bc = 'badge-std';
+$resPending = $conn->query($sqlPending);
+$resHistory = $conn->query($sqlHistory);
+$pendingCount = $resPending ? $resPending->num_rows : 0;
+$historyCount = $resHistory ? $resHistory->num_rows : 0;
 
-            echo "<tr>";
-            echo "<td>".htmlspecialchars($row2['EmpName'])."</td>";
-            echo "<td><span class='badge-type $bc'>".htmlspecialchars($lt)."</span></td>";
-            echo "<td>".htmlspecialchars($row2['RequestDate'])."</td>";
-            echo "<td>".htmlspecialchars($row2['LeaveDays'])."</td>";
-            echo "<td>".htmlspecialchars($row2['StartDate']);
-            if($row2['FromSession']) echo "<div class='session-info'>Session: <strong>".htmlspecialchars($row2['FromSession'])."</strong></div>";
-            echo "</td>";
-            echo "<td>".htmlspecialchars($row2['EndDate']);
-            if($row2['ToSession']) echo "<div class='session-info'>Session: <strong>".htmlspecialchars($row2['ToSession'])."</strong></div>";
-            echo "</td>";
-            echo "<td>";
-            if($row2['ActivityID'])   echo "<div class='extra-info'>🆔 ".htmlspecialchars($row2['ActivityID'])."</div>";
-            if($row2['ActivityName']) echo "<div class='extra-info'>🎓 ".htmlspecialchars($row2['ActivityName'])."</div>";
-            if($row2['Reason'])       echo "<div class='extra-info'>📝 ".htmlspecialchars(substr($row2['Reason'],0,60))."</div>";
-            echo "</td>";
-            echo "<td>
-                <a href='acceptleave.php?id=".$row2['id']."&empid=".$row2['Id']."' style='color:#065f46;font-weight:700;'>✅ Accept</a>
-                &nbsp;&nbsp;
-                <a href='rejectleave.php?id=".$row2['id']."&empid=".$row2['Id']."' style='color:#991b1b;font-weight:700;'>❌ Reject</a>
-              </td>";
-            echo "</tr>";
-            $count++;
-        }
-        echo "<tr><td colspan='8' style='text-align:center;padding:10px;background:#e8f4f8;'><strong>$count Pending Request(s)</strong></td></tr>";
-        echo "</table>";
+function leaveCard($row, $showActions = true){
+    $lt = $row['LeaveType'];
+    if($lt==='On Duty')      $bc='badge-od';
+    elseif($lt==='Special Leave') $bc='badge-sp';
+    elseif($lt==='Loss of Pay')   $bc='badge-lop';
+    else $bc='badge-std';
+
+    $statusClass = isset($row['Status']) ? strtolower($row['Status']) : '';
+    $cardClass   = $statusClass === 'granted' ? 'granted' : ($statusClass === 'rejected' ? 'rejected' : '');
+
+    echo "<div class='leave-card $cardClass'>";
+    echo "  <div class='leave-info'>";
+    echo "    <div class='name'>".htmlspecialchars($row['EmpName'])." <span style='font-size:.8rem;color:#94a3b8;font-weight:400;'>(".htmlspecialchars($row['Dept']).")</span></div>";
+    echo "    <div class='meta'>";
+    echo "      <span class='meta-item'><span class='badge-type $bc'>".htmlspecialchars($lt)."</span></span>";
+    echo "      <span class='meta-item'>📅 ".htmlspecialchars($row['StartDate']);
+    if($row['FromSession']) echo " (".htmlspecialchars($row['FromSession']).")";
+    echo " → ".htmlspecialchars($row['EndDate']);
+    if($row['ToSession']) echo " (".htmlspecialchars($row['ToSession']).")";
+    echo "</span>";
+    echo "      <span class='meta-item'>🗓 <strong>".htmlspecialchars($row['LeaveDays'])."</strong> day(s)</span>";
+    if($row['ActivityID']) echo "<span class='meta-item'>🆔 ".htmlspecialchars($row['ActivityID'])."</span>";
+    if($row['Reason'])     echo "<span class='meta-item'>📝 ".htmlspecialchars(substr($row['Reason'],0,50))."</span>";
+    echo "      <span class='meta-item' style='color:#94a3b8;'>Requested: ".htmlspecialchars($row['RequestDate'])."</span>";
+    echo "    </div>";
+    echo "  </div>";
+    echo "  <div class='leave-actions'>";
+    if($showActions){
+        echo "<a href='acceptleave.php?id=".$row['id']."&empid=".$row['Id']."' class='btn-accept' onclick=\"return confirm('Approve leave for ".htmlspecialchars($row['EmpName'])."?')\">✅ Approve</a>";
+        echo "<a href='rejectleave.php?id=".$row['id']."&empid=".$row['Id']."' class='btn-reject' onclick=\"return confirm('Reject leave for ".htmlspecialchars($row['EmpName'])."?')\">❌ Reject</a>";
     } else {
-        echo "<div style='background:#fff;padding:40px;text-align:center;border-radius:8px;margin:20px 0;'>";
-        echo "<h3 style='color:#27ae60;'>✅ No Pending Requests</h3>";
-        echo "<p style='color:#666;'>All leave requests have been processed, or no faculty is assigned to you yet.</p>";
-        echo "</div>";
+        $pillClass = $row['Status']==='Granted' ? 'pill-granted' : 'pill-rejected';
+        $icon      = $row['Status']==='Granted' ? '✅' : '❌';
+        echo "<span class='status-pill $pillClass'>$icon ".htmlspecialchars($row['Status'])."</span>";
     }
-} else {
-    header("location:index.php?err=".urlencode('Please login first!'));
+    echo "  </div>";
+    echo "</div>";
 }
 ?>
+
+<div class="page-wrap">
+<h1 style="color:#ffffff;">📋 Faculty Leave Requests</h1>
+<p class="sub">Manage leave requests for your assigned faculty</p>
+
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('pending',this)">
+        ⏳ Pending
+        <?php if($pendingCount > 0): ?>
+        <span class="tab-badge"><?php echo $pendingCount; ?></span>
+        <?php endif; ?>
+    </button>
+    <button class="tab-btn" onclick="switchTab('history',this)">
+        📁 History
+        <?php if($historyCount > 0): ?>
+        <span class="tab-badge green"><?php echo $historyCount; ?></span>
+        <?php endif; ?>
+    </button>
 </div>
-</center>
+
+<!-- Pending Tab -->
+<div id="tab-pending" class="tab-content active">
+<?php if($pendingCount > 0):
+    while($row = $resPending->fetch_assoc()) leaveCard($row, true);
+else: ?>
+    <div class="empty-box">
+        <div class="big">🎉</div>
+        <p>No pending leave requests. All caught up!</p>
+    </div>
+<?php endif; ?>
+</div>
+
+<!-- History Tab -->
+<div id="tab-history" class="tab-content">
+<?php if($historyCount > 0):
+    while($row = $resHistory->fetch_assoc()) leaveCard($row, false);
+else: ?>
+    <div class="empty-box">
+        <div class="big">📭</div>
+        <p>No approved or rejected leaves yet.</p>
+    </div>
+<?php endif; ?>
+</div>
+
+</div>
+
+<script>
+function switchTab(name, btn){
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    btn.classList.add('active');
+}
+</script>

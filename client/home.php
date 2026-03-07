@@ -24,7 +24,7 @@ if(isset($_SESSION['user']))
 						echo "<tr><th>Employee Name : </th><td>".$row["EmpName"]."</td></tr>";
 						echo "<tr><th>Department : </th><td>".$row["Dept"]."</td></tr>";
 						echo "<tr><th>Earn Leave : </th><td>".$row["EarnLeave"]."</td></tr>";
-						echo "<tr><th>Sick Leave : </th><td>".$row["SickLeave"]."</td></tr>";
+						echo "<tr><th>Medical Leave : </th><td>".$row["SickLeave"]."</td></tr>";
 						echo "<tr><th>Casual Leave : </th><td>".$row["CasualLeave"]."</td></tr>";
 						echo "<tr><th>Date Of Joining : </th><td>".$row["DateOfJoin"]."</td></tr>";
 						echo "<tr><th>Current Time : </th><td><div id = 'clock'></div></td></tr>";

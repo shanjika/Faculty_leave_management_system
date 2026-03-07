@@ -38,7 +38,6 @@
         <?php
         // DO NOT call session_start() here — already called in parent page
         $role = $_SESSION['role'] ?? 'HOD';
-        echo "<span class='role-tag'>$role</span>";
         ?>
     </div>
     <div class="nav-right">
