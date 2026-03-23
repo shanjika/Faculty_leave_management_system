@@ -361,6 +361,15 @@ $hodCount = $rHods ? (int)$rHods->fetch_assoc()['cnt'] : 0;
         <span class="action-icon">📋</span>
         View All Faculty
     </a>
+    <a class="action-block" href="hr_leaves.php">
+    <span class="action-icon">📋</span>
+    Leave Approvals
+    <?php
+    $pendR = $conn->query("SELECT COUNT(*) as cnt FROM emp_leaves WHERE HODStatus='Granted' AND HRStatus='Pending'");
+    $pendC = $pendR ? (int)$pendR->fetch_assoc()['cnt'] : 0;
+    if($pendC > 0) echo "<span style='background:#ef4444;color:#fff;padding:2px 10px;border-radius:99px;font-size:.75rem;'>$pendC pending</span>";
+    ?>
+</a>
 </div>
 
 <?php endif; ?>

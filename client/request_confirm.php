@@ -8,89 +8,109 @@ if(!isset($_SESSION['user'])){
 }
 
 $user      = $_SESSION['user'];
-$leaveType = $conn->real_escape_string($_POST['leavetype']     ?? '');
-$empname   = $conn->real_escape_string($_POST['empname']       ?? '');
-$dept      = $conn->real_escape_string($_POST['dept']          ?? '');
-$emptype   = $conn->real_escape_string($_POST['emptype']       ?? '');
-$desig     = $conn->real_escape_string($_POST['designation']   ?? '');
-$empfee    = $conn->real_escape_string($_POST['empfee']        ?? '');
-$reason    = $conn->real_escape_string($_POST['leavereason']   ?? '');
-$fromDate  = $conn->real_escape_string($_POST['from_date']     ?? '');
-$toDate    = $conn->real_escape_string($_POST['to_date']       ?? '');
-$fromSess  = $conn->real_escape_string($_POST['from_session']  ?? '');
-$toSess    = $conn->real_escape_string($_POST['to_session']    ?? '');
-$actId     = $conn->real_escape_string($_POST['activity_id']   ?? '');
-$spReason  = $conn->real_escape_string($_POST['special_reason']?? '');
+$leaveType = $conn->real_escape_string($_POST['leavetype']      ?? '');
+$empname   = $conn->real_escape_string($_POST['empname']        ?? '');
+$dept      = $conn->real_escape_string($_POST['dept']           ?? '');
+$emptype   = $conn->real_escape_string($_POST['emptype']        ?? '');
+$desig     = $conn->real_escape_string($_POST['designation']    ?? '');
+$empfee    = $conn->real_escape_string($_POST['empfee']         ?? '');
+$reason    = $conn->real_escape_string($_POST['leavereason']    ?? '');
+$fromDate  = $conn->real_escape_string($_POST['from_date']      ?? '');
+$toDate    = $conn->real_escape_string($_POST['to_date']        ?? '');
+$fromSess  = $conn->real_escape_string($_POST['from_session']   ?? '');
+$toSess    = $conn->real_escape_string($_POST['to_session']     ?? '');
+$actId     = $conn->real_escape_string($_POST['activity_id']    ?? '');
+$spReason  = $conn->real_escape_string($_POST['special_reason'] ?? '');
 
 $isOnDuty  = ($leaveType === 'On Duty');
 $isSpecial = ($leaveType === 'Special Leave');
-$isLOP     = ($leaveType === 'Loss of Pay');
 
-// Validate Activity ID for On Duty
+// Validate Activity ID
 if($isOnDuty && trim($_POST['activity_id'] ?? '') !== '12345'){
-    header('location:leaverequest.php?type=On+Duty&err='.urlencode('Invalid Activity ID!'));
+    header('location:request_leave.php?err='.urlencode('Invalid Activity ID!'));
     exit;
 }
 
 // Validate dates
 if(empty($fromDate) || empty($toDate)){
-    header('location:leaverequest.php?type='.urlencode($leaveType).'&err='.urlencode('Please select both From and To dates!'));
+    header('location:request_leave.php?err='.urlencode('Please select both dates!'));
     exit;
 }
 if(strtotime($toDate) < strtotime($fromDate)){
-    header('location:leaverequest.php?type='.urlencode($leaveType).'&err='.urlencode('To Date cannot be before From Date!'));
+    header('location:request_leave.php?err='.urlencode('To Date cannot be before From Date!'));
     exit;
 }
 
-// Calculate leave days based on sessions
+// Calculate leave days
 $d1       = new DateTime($fromDate);
 $d2       = new DateTime($toDate);
 $diffDays = $d1->diff($d2)->days + 1;
 if($fromSess === 'AN') $diffDays -= 0.5;
 if($toSess   === 'FN') $diffDays -= 0.5;
-if($diffDays < 0.5)    $diffDays = 0.5;
+if($diffDays < 0.5)    $diffDays  = 0.5;
 $leaveDays = (int)ceil($diffDays);
 
-// ── BALANCE CHECK ──
-// Get employee record
+// Balance check
 $empRes = $conn->query("SELECT * FROM employees WHERE UserName='".$conn->real_escape_string($user)."'");
 if(!$empRes || $empRes->num_rows === 0){
-    header('location:request_leave.php?err='.urlencode('Employee record not found!'));
+    header('location:request_leave.php?err='.urlencode('Employee not found!'));
     exit;
 }
 $empData = $empRes->fetch_assoc();
 
 $errMsg = '';
-
-if($leaveType === 'Medical Leave'){
-    if($leaveDays > (int)$empData['SickLeave']){
-        $errMsg = "Insufficient Medical Leave balance! You have ".(int)$empData['SickLeave']." day(s) remaining but requested $leaveDays day(s).";
-    }
-} elseif($leaveType === 'Casual Leave'){
-    if($leaveDays > (int)$empData['CasualLeave']){
-        $errMsg = "Insufficient Casual Leave balance! You have ".(int)$empData['CasualLeave']." day(s) remaining but requested $leaveDays day(s).";
-    }
-} elseif($leaveType === 'Earn Leave'){
-    if($leaveDays > (int)$empData['EarnLeave']){
-        $errMsg = "Insufficient Earn Leave balance! You have ".(int)$empData['EarnLeave']." day(s) remaining but requested $leaveDays day(s).";
-    }
-}
-// Loss of Pay, On Duty, Special Leave — no balance check needed
+if($leaveType === 'Medical Leave' && $leaveDays > (int)$empData['SickLeave'])
+    $errMsg = "Insufficient Medical Leave balance! You have ".(int)$empData['SickLeave']." day(s) remaining.";
+elseif($leaveType === 'Casual Leave' && $leaveDays > (int)$empData['CasualLeave'])
+    $errMsg = "Insufficient Casual Leave balance! You have ".(int)$empData['CasualLeave']." day(s) remaining.";
+elseif($leaveType === 'Earn Leave' && $leaveDays > (int)$empData['EarnLeave'])
+    $errMsg = "Insufficient Earn Leave balance! You have ".(int)$empData['EarnLeave']." day(s) remaining.";
 
 if(!empty($errMsg)){
-    header('location:leaverequest.php?type='.urlencode($leaveType).'&err='.urlencode($errMsg));
+    header('location:request_leave.php?err='.urlencode($errMsg));
     exit;
 }
 
-// Build final reason
+// Handle proof file upload
+$proofFileName = '';
+if(($isOnDuty || $isSpecial) && isset($_FILES['proof_file']) && $_FILES['proof_file']['error'] === 0){
+    $file     = $_FILES['proof_file'];
+    $allowed  = ['pdf','jpg','jpeg','png','doc','docx'];
+    $ext      = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+    if(!in_array($ext, $allowed)){
+        header('location:request_leave.php?err='.urlencode('Invalid file type! Allowed: PDF, JPG, PNG, DOC'));
+        exit;
+    }
+    if($file['size'] > 5 * 1024 * 1024){
+        header('location:request_leave.php?err='.urlencode('File too large! Maximum 5MB allowed.'));
+        exit;
+    }
+
+    // Create folder if not exists
+    $uploadDir = '../client/leave_proofs/';
+    if(!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+    $proofFileName = 'proof_'.time().'_'.preg_replace('/[^a-zA-Z0-9.]/', '_', $file['name']);
+    move_uploaded_file($file['tmp_name'], $uploadDir . $proofFileName);
+
+} elseif(($isOnDuty || $isSpecial) && empty($proofFileName)){
+    header('location:request_leave.php?err='.urlencode('Proof document is required for '.$leaveType.'!'));
+    exit;
+}
+
+// Final reason
 $finalReason = $reason;
 if($isSpecial && $spReason) $finalReason = $spReason.($reason ? ' – '.$reason : '');
 
-// Insert into database
+// Insert leave
+$proofSafe = $conn->real_escape_string($proofFileName);
 $sql = "INSERT INTO emp_leaves
-        (EmpName, LeaveType, LeaveDays, StartDate, EndDate, Dept, FromSession, ToSession, ActivityID, Reason)
+        (EmpName, LeaveType, LeaveDays, StartDate, EndDate, Dept,
+         FromSession, ToSession, ActivityID, Reason, ProofFile)
         VALUES
-        ('$empname','$leaveType','$leaveDays','$fromDate','$toDate','$dept','$fromSess','$toSess','$actId','$finalReason')";
+        ('$empname','$leaveType','$leaveDays','$fromDate','$toDate','$dept',
+         '$fromSess','$toSess','$actId','$finalReason','$proofSafe')";
 
 $success = $conn->query($sql);
 $conn->close();
@@ -100,11 +120,11 @@ $conn->close();
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leave Request – Faculty Portal</title>
+<title>Leave Request Submitted</title>
 <link rel="stylesheet" href="style.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; }
 .wrap { max-width:560px; margin:60px auto; padding:20px; }
 .card {
     background:#fff; border-radius:18px;
@@ -112,10 +132,9 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
     padding:40px 36px; text-align:center;
 }
 .big-icon { font-size:4rem; }
-.card h2  { font-size:1.6rem; margin:16px 0 8px; }
-.card p   { color:#374151; font-size:.95rem; margin-bottom:20px; line-height:1.6; }
-.card h2.success { color:#065f46; }
-.card h2.error   { color:#991b1b; }
+.card h2.success { color:#065f46; font-size:1.6rem; margin:16px 0 8px; }
+.card h2.error   { color:#991b1b; font-size:1.6rem; margin:16px 0 8px; }
+.card p { color:#374151; font-size:.95rem; margin-bottom:20px; line-height:1.6; }
 .detail-block { margin:20px 0; text-align:left; }
 .detail-row {
     display:flex; justify-content:space-between;
@@ -123,7 +142,12 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
 }
 .detail-row .lbl { color:#64748b; font-weight:600; }
 .detail-row .val { color:#1e293b; font-weight:700; text-align:right; }
-.status-pending  { color:#d97706; font-weight:800; }
+.status-pending { color:#d97706; font-weight:800; }
+.proof-note {
+    background:#e0e7ff; border-radius:10px;
+    padding:10px 14px; font-size:.83rem;
+    color:#4338ca; margin-bottom:16px; text-align:left;
+}
 .btn-row { display:flex; gap:12px; margin-top:24px; }
 .btn {
     flex:1; padding:13px; border-radius:10px;
@@ -134,15 +158,6 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
 .btn-primary   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
 .btn-secondary { background:#f1f5f9; color:#374151; }
 .btn:hover { opacity:.88; }
-.balance-box {
-    background:#fef3c7; border:1px solid #fcd34d;
-    border-radius:10px; padding:14px 16px;
-    font-size:.88rem; color:#92400e;
-    margin-bottom:16px; text-align:left;
-}
-.balance-row { display:flex; justify-content:space-between; padding:4px 0; font-size:.85rem; }
-.balance-lbl { color:#64748b; }
-.balance-val { font-weight:700; color:#1e293b; }
 </style>
 </head>
 <body>
@@ -155,7 +170,13 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
 <?php if($success): ?>
     <div class="big-icon">✅</div>
     <h2 class="success">Leave Request Submitted!</h2>
-    <p>Your <strong><?php echo htmlspecialchars($leaveType); ?></strong> request has been submitted and is pending HOD approval.</p>
+    <p>Your <strong><?php echo htmlspecialchars($leaveType); ?></strong> request has been submitted and is awaiting HOD approval.</p>
+
+    <?php if(!empty($proofFileName)): ?>
+    <div class="proof-note">
+        📎 Proof document uploaded successfully — visible to HOD and HR.
+    </div>
+    <?php endif; ?>
 
     <div class="detail-block">
         <div class="detail-row">
@@ -170,11 +191,11 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
         <?php endif; ?>
         <div class="detail-row">
             <span class="lbl">From</span>
-            <span class="val"><?php echo htmlspecialchars($fromDate); ?> (<?php echo htmlspecialchars($fromSess); ?>)</span>
+            <span class="val"><?php echo $fromDate; ?> (<?php echo $fromSess; ?>)</span>
         </div>
         <div class="detail-row">
             <span class="lbl">To</span>
-            <span class="val"><?php echo htmlspecialchars($toDate); ?> (<?php echo htmlspecialchars($toSess); ?>)</span>
+            <span class="val"><?php echo $toDate; ?> (<?php echo $toSess; ?>)</span>
         </div>
         <div class="detail-row">
             <span class="lbl">Total Days</span>
@@ -194,7 +215,7 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
         <?php endif; ?>
         <div class="detail-row">
             <span class="lbl">Status</span>
-            <span class="val status-pending">🕐 Pending Approval</span>
+            <span class="val status-pending">🕐 Awaiting HOD</span>
         </div>
     </div>
 
@@ -206,7 +227,7 @@ body { font-family:'Segoe UI',sans-serif; background:#eef2f7; min-height:100vh; 
 <?php else: ?>
     <div class="big-icon">❌</div>
     <h2 class="error">Submission Failed</h2>
-    <p>Something went wrong while submitting your leave request. Please try again.</p>
+    <p>Something went wrong. Please try again.</p>
     <div class="btn-row">
         <a href="request_leave.php" class="btn btn-primary">← Go Back</a>
     </div>

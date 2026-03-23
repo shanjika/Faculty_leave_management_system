@@ -3,59 +3,39 @@ session_start();
 include 'connect.php';
 
 if(!isset($_SESSION['adminuser'])){
-    header('location:index.php?err='.urlencode('Please login first!'));
+    header('location:index.php?err='.urlencode('Please Login First!'));
+    exit;
+}
+if(($_SESSION['role'] ?? 'HOD') !== 'HR'){
+    header('location:home.php?msg='.urlencode('Only HR can access this page.'));
     exit;
 }
 
-$role    = $_SESSION['role'] ?? 'HOD';
-$hodUser = $conn->real_escape_string($_SESSION['adminuser']);
-
-if($role === 'HR'){
-    header('location:hr_leaves.php');
-    exit;
-}
-
-// Handle HOD approve
-if(isset($_GET['hod_approve'])){
-    $lid    = (int)$_GET['hod_approve'];
+// Handle HR approve
+if(isset($_GET['hr_approve'])){
+    $lid    = (int)$_GET['hr_approve'];
     $leaveR = $conn->query("SELECT * FROM emp_leaves WHERE id='$lid'");
     $lv     = $leaveR->fetch_assoc();
-    $empR   = $conn->query("SELECT * FROM employees WHERE EmpName='".$conn->real_escape_string($lv['EmpName'])."'");
-    $em     = $empR->fetch_assoc();
-    $days   = (int)$lv['LeaveDays'];
-    $lt     = $lv['LeaveType'];
-
-    if($lt==='Medical Leave' && $days>(int)$em['SickLeave']){
-        header('location:view_leaves.php?err='.urlencode('Insufficient Medical Leave balance!')); exit;
-    }
-    if($lt==='Casual Leave' && $days>(int)$em['CasualLeave']){
-        header('location:view_leaves.php?err='.urlencode('Insufficient Casual Leave balance!')); exit;
-    }
-    if($lt==='Earn Leave' && $days>(int)$em['EarnLeave']){
-        header('location:view_leaves.php?err='.urlencode('Insufficient Earn Leave balance!')); exit;
-    }
-    if($lt==='Medical Leave')    $conn->query("UPDATE employees SET SickLeave=SickLeave-$days     WHERE EmpName='".$conn->real_escape_string($lv['EmpName'])."'");
-    elseif($lt==='Casual Leave') $conn->query("UPDATE employees SET CasualLeave=CasualLeave-$days WHERE EmpName='".$conn->real_escape_string($lv['EmpName'])."'");
-    elseif($lt==='Earn Leave')   $conn->query("UPDATE employees SET EarnLeave=EarnLeave-$days     WHERE EmpName='".$conn->real_escape_string($lv['EmpName'])."'");
-
-    $newOverall = ($lv['HRStatus']==='Granted') ? 'Granted' : 'Requested';
-    $conn->query("UPDATE emp_leaves SET HODStatus='Granted', Status='$newOverall' WHERE id='$lid'");
-    header('location:view_leaves.php?msg='.urlencode('Leave approved by HOD'));
+    $newOverall = ($lv['HODStatus']==='Granted') ? 'Granted' : 'Requested';
+    $conn->query("UPDATE emp_leaves SET HRStatus='Granted', Status='$newOverall' WHERE id='$lid'");
+    header('location:hr_leaves.php?msg='.urlencode('Leave approved by HR'));
     exit;
 }
 
-// Handle HOD reject
-if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['hod_reject_id'])){
-    $lid    = (int)$_POST['hod_reject_id'];
-    $reason = $conn->real_escape_string($_POST['rejection_reason'] ?? 'Rejected by HOD');
-    $conn->query("UPDATE emp_leaves SET HODStatus='Rejected', Status='Rejected', RejectionReason='$reason' WHERE id='$lid'");
-    header('location:view_leaves.php?msg='.urlencode('Leave rejected by HOD'));
+// Handle HR reject
+if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['hr_reject_id'])){
+    $lid    = (int)$_POST['hr_reject_id'];
+    $reason = $conn->real_escape_string($_POST['rejection_reason'] ?? 'Rejected by HR');
+    $conn->query("UPDATE emp_leaves SET HRStatus='Rejected', Status='Rejected', RejectionReason='$reason' WHERE id='$lid'");
+    header('location:hr_leaves.php?msg='.urlencode('Leave rejected by HR'));
     exit;
 }
 
-// Get pending leaves
-$sqlPending = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.LeaveDays,
-    el.StartDate, el.EndDate, el.id, el.HRStatus, el.HODStatus,
+// Pending — only HOD approved leaves
+$sqlPending = "SELECT e.Id, e.EmpName, e.Dept, e.HodUsername,
+    el.LeaveType, el.RequestDate, el.LeaveDays,
+    el.StartDate, el.EndDate, el.id,
+    el.HRStatus, el.HODStatus,
     IFNULL(el.FromSession,'')  as FromSession,
     IFNULL(el.ToSession,'')    as ToSession,
     IFNULL(el.ActivityID,'')   as ActivityID,
@@ -63,12 +43,14 @@ $sqlPending = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.
     IFNULL(el.ProofFile,'')    as ProofFile
     FROM employees e
     INNER JOIN emp_leaves el ON e.EmpName=el.EmpName AND e.Dept=el.Dept
-    WHERE e.HodUsername='$hodUser' AND el.HODStatus='Pending'
+    WHERE el.HODStatus='Granted' AND el.HRStatus='Pending'
     ORDER BY el.RequestDate DESC";
 
-// Get history
-$sqlHistory = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.LeaveDays,
-    el.StartDate, el.EndDate, el.id, el.Status, el.HRStatus, el.HODStatus,
+// History
+$sqlHistory = "SELECT e.Id, e.EmpName, e.Dept, e.HodUsername,
+    el.LeaveType, el.RequestDate, el.LeaveDays,
+    el.StartDate, el.EndDate, el.id,
+    el.Status, el.HRStatus, el.HODStatus,
     IFNULL(el.FromSession,'')       as FromSession,
     IFNULL(el.ToSession,'')         as ToSession,
     IFNULL(el.ActivityID,'')        as ActivityID,
@@ -77,8 +59,8 @@ $sqlHistory = "SELECT e.Id, e.EmpName, e.Dept, el.LeaveType, el.RequestDate, el.
     IFNULL(el.ProofFile,'')         as ProofFile
     FROM employees e
     INNER JOIN emp_leaves el ON e.EmpName=el.EmpName AND e.Dept=el.Dept
-    WHERE e.HodUsername='$hodUser' AND el.HODStatus IN ('Granted','Rejected')
-    ORDER BY el.RequestDate DESC LIMIT 50";
+    WHERE el.HRStatus IN ('Granted','Rejected')
+    ORDER BY el.RequestDate DESC LIMIT 60";
 
 $resPending   = $conn->query($sqlPending);
 $resHistory   = $conn->query($sqlHistory);
@@ -90,22 +72,21 @@ $historyCount = $resHistory ? $resHistory->num_rows : 0;
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>View Faculty Leaves</title>
+<title>HR Leave Approvals</title>
 <link rel="stylesheet" href="style.css">
-<link rel="shortcut icon" type="image/png" href="favicon.png"/>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; }
 .page-wrap { max-width:1200px; margin:0 auto; padding:30px 20px; }
 
-.banner-hod {
-    background:linear-gradient(135deg,#1e3a8a,#3b82f6);
-    padding:24px 28px; border-radius:14px;
+.banner {
+    background:linear-gradient(135deg,#065f46 0%,#10b981 100%);
+    color:#fff; padding:26px 30px; border-radius:14px;
     margin-bottom:24px;
-    box-shadow:0 8px 24px rgba(30,58,138,.2);
+    box-shadow:0 8px 24px rgba(6,95,70,.2);
 }
-.banner-hod h1 { color:#fff; font-size:1.8rem; margin-bottom:4px; }
-.banner-hod p  { color:#fff; font-size:.9rem; opacity:.85; }
+.banner h1 { font-size:1.6rem; margin-bottom:4px; }
+.banner p  { font-size:.88rem; opacity:.85; }
 
 .tabs { display:flex; gap:0; margin-bottom:24px; border-bottom:3px solid #e2e8f0; }
 .tab-btn {
@@ -114,8 +95,8 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     cursor:pointer; border-bottom:3px solid transparent;
     margin-bottom:-3px; transition:all .2s;
 }
-.tab-btn.active { color:#1e3a8a; border-bottom-color:#667eea; }
-.tab-btn:hover  { color:#1e3a8a; background:#f8faff; }
+.tab-btn.active { color:#065f46; border-bottom-color:#10b981; }
+.tab-btn:hover  { color:#065f46; background:#f0fdf4; }
 .tab-badge {
     display:inline-block; background:#e53e3e; color:#fff;
     font-size:.7rem; font-weight:800; padding:1px 7px;
@@ -129,7 +110,7 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     background:#fff; border-radius:14px;
     box-shadow:0 4px 18px rgba(0,0,0,.07);
     padding:20px 24px; margin-bottom:16px;
-    border-left:5px solid #667eea; transition:box-shadow .2s;
+    border-left:5px solid #10b981; transition:box-shadow .2s;
 }
 .leave-card:hover  { box-shadow:0 8px 28px rgba(0,0,0,.12); }
 .leave-card.granted  { border-left-color:#38a169; }
@@ -160,29 +141,36 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     padding-top:14px; border-top:1px solid #f1f5f9;
     flex-wrap:wrap; align-items:center; justify-content:space-between;
 }
-.status-pills { display:flex; gap:8px; flex-wrap:wrap; }
+.status-pills { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .spill { padding:4px 14px; border-radius:99px; font-size:.78rem; font-weight:700; }
 .spill-pending  { background:#fef3c7; color:#92400e; }
 .spill-granted  { background:#d1fae5; color:#065f46; }
 .spill-rejected { background:#fee2e2; color:#991b1b; }
 
-.leave-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.hod-badge {
+    background:#e0e7ff; color:#4338ca;
+    padding:3px 12px; border-radius:99px;
+    font-size:.75rem; font-weight:700;
+}
+
+.leave-actions { display:flex; gap:10px; flex-wrap:wrap; }
 .btn-accept {
-    padding:9px 20px; background:linear-gradient(135deg,#38a169,#276749);
+    padding:9px 22px; background:linear-gradient(135deg,#10b981,#065f46);
     color:#fff; border:none; border-radius:8px;
-    font-weight:700; font-size:.85rem; cursor:pointer;
+    font-weight:700; font-size:.88rem; cursor:pointer;
     text-decoration:none; transition:opacity .2s;
 }
 .btn-reject {
-    padding:9px 20px; background:linear-gradient(135deg,#e53e3e,#c53030);
+    padding:9px 22px; background:linear-gradient(135deg,#e53e3e,#c53030);
     color:#fff; border:none; border-radius:8px;
-    font-weight:700; font-size:.85rem; cursor:pointer; transition:opacity .2s;
+    font-weight:700; font-size:.88rem; cursor:pointer; transition:opacity .2s;
 }
 .btn-accept:hover,.btn-reject:hover { opacity:.85; }
 
 .rejection-box {
-    margin-top:10px; background:#fee2e2; border-radius:8px;
-    padding:8px 14px; font-size:.83rem; color:#991b1b;
+    margin-top:10px; background:#fee2e2;
+    border-radius:8px; padding:10px 14px;
+    font-size:.83rem; color:#991b1b;
 }
 
 .empty-box {
@@ -233,9 +221,9 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
 
 <div class="page-wrap">
 
-    <div class="banner-hod">
-        <h1>📋 Faculty Leave Requests</h1>
-        <p>Review and action leave requests for your assigned faculty</p>
+    <div class="banner">
+        <h1>📋 HR Leave Approvals</h1>
+        <p>Final approval for HOD-approved leave requests — all departments</p>
     </div>
 
     <?php if(isset($_GET['msg'])): ?>
@@ -245,15 +233,23 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     <div class="alert-error">❌ <?php echo htmlspecialchars($_GET['err']); ?></div>
     <?php endif; ?>
 
+    <?php if($pendingCount === 0 && $historyCount === 0): ?>
+    <div class="empty-box">
+        <div class="big">🎉</div>
+        <p>No leave requests waiting for HR approval.<br>
+        <span style="font-size:.85rem;color:#94a3b8;">Requests appear here only after HOD approval.</span></p>
+    </div>
+    <?php else: ?>
+
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('pending',this)">
-            ⏳ Pending
+            ⏳ Pending HOD-Approved
             <?php if($pendingCount>0): ?>
             <span class="tab-badge"><?php echo $pendingCount; ?></span>
             <?php endif; ?>
         </button>
         <button class="tab-btn" onclick="switchTab('history',this)">
-            📁 History
+            📁 HR History
             <?php if($historyCount>0): ?>
             <span class="tab-badge green"><?php echo $historyCount; ?></span>
             <?php endif; ?>
@@ -266,7 +262,6 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
         while($row = $resPending->fetch_assoc()):
             $lt = $row['LeaveType'];
             $bc = $lt==='On Duty'?'badge-od':($lt==='Special Leave'?'badge-sp':($lt==='Loss of Pay'?'badge-lop':'badge-std'));
-            $hrPill = 'spill-'.strtolower($row['HRStatus']);
     ?>
     <div class="leave-card">
         <div class="leave-top">
@@ -304,21 +299,24 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
                     </span>
                     <?php endif; ?>
                     <span class="meta-item" style="color:#94a3b8;">
-                        Requested: <?php echo date('d M Y',strtotime($row['RequestDate'])); ?>
+                        <?php echo date('d M Y',strtotime($row['RequestDate'])); ?>
                     </span>
                 </div>
             </div>
         </div>
         <div class="status-row">
             <div class="status-pills">
-                <span class="spill <?php echo $hrPill; ?>">HR: <?php echo $row['HRStatus']; ?></span>
-                <span class="spill spill-pending">HOD: Pending</span>
+                <span class="spill spill-pending">HR: Pending</span>
+                <span class="spill spill-granted">HOD: Granted ✅</span>
+                <?php if(!empty($row['HodUsername'])): ?>
+                <span class="hod-badge">👤 <?php echo htmlspecialchars($row['HodUsername']); ?></span>
+                <?php endif; ?>
             </div>
             <div class="leave-actions">
-                <a href="view_leaves.php?hod_approve=<?php echo $row['id']; ?>&empid=<?php echo $row['Id']; ?>"
+                <a href="hr_leaves.php?hr_approve=<?php echo $row['id']; ?>"
                    class="btn-accept"
-                   onclick="return confirm('Approve leave for <?php echo htmlspecialchars($row['EmpName']); ?>?')">
-                   ✅ Approve
+                   onclick="return confirm('Finally approve leave for <?php echo htmlspecialchars($row['EmpName']); ?>?')">
+                   ✅ Final Approve
                 </a>
                 <button class="btn-reject"
                     onclick="openReject(<?php echo $row['id']; ?>,'<?php echo htmlspecialchars($row['EmpName']); ?>')">
@@ -331,7 +329,8 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     else: ?>
     <div class="empty-box">
         <div class="big">🎉</div>
-        <p>No pending leave requests!</p>
+        <p>No pending requests.<br>
+        <span style="font-size:.85rem;color:#94a3b8;">Leaves appear here after HOD approves them.</span></p>
     </div>
     <?php endif; ?>
     </div>
@@ -342,9 +341,10 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
         while($row = $resHistory->fetch_assoc()):
             $lt      = $row['LeaveType'];
             $bc      = $lt==='On Duty'?'badge-od':($lt==='Special Leave'?'badge-sp':($lt==='Loss of Pay'?'badge-lop':'badge-std'));
+            $hrSt    = $row['HRStatus'];
             $hodSt   = $row['HODStatus'];
-            $cardCl  = $hodSt==='Granted'?'granted':($hodSt==='Rejected'?'rejected':'');
-            $hrPill  = 'spill-'.strtolower($row['HRStatus']);
+            $cardCl  = $hrSt==='Granted'?'granted':($hrSt==='Rejected'?'rejected':'');
+            $hrPill  = 'spill-'.strtolower($hrSt);
             $hodPill = 'spill-'.strtolower($hodSt);
     ?>
     <div class="leave-card <?php echo $cardCl; ?>">
@@ -389,7 +389,7 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
         </div>
         <div class="status-row">
             <div class="status-pills">
-                <span class="spill <?php echo $hrPill; ?>">HR: <?php echo $row['HRStatus']; ?></span>
+                <span class="spill <?php echo $hrPill; ?>">HR: <?php echo $hrSt; ?></span>
                 <span class="spill <?php echo $hodPill; ?>">HOD: <?php echo $hodSt; ?></span>
             </div>
         </div>
@@ -398,11 +398,12 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
     else: ?>
     <div class="empty-box">
         <div class="big">📭</div>
-        <p>No history yet.</p>
+        <p>No HR history yet.</p>
     </div>
     <?php endif; ?>
     </div>
 
+    <?php endif; ?>
 </div>
 
 <!-- Reject Modal -->
@@ -412,7 +413,7 @@ body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; min-height:100vh; 
         <p id="rejectEmpName" style="color:#1e293b;font-weight:700;margin-bottom:6px;"></p>
         <p>Please provide a reason. This will be visible to the faculty member.</p>
         <form method="POST" action="">
-            <input type="hidden" name="hod_reject_id" id="hod_reject_id">
+            <input type="hidden" name="hr_reject_id" id="hr_reject_id">
             <textarea name="rejection_reason" placeholder="Enter reason for rejection..." required></textarea>
             <div class="modal-btns">
                 <button type="button" class="btn-cancel-modal" onclick="closeReject()">Cancel</button>
@@ -430,7 +431,7 @@ function switchTab(name,btn){
     btn.classList.add('active');
 }
 function openReject(id,name){
-    document.getElementById('hod_reject_id').value = id;
+    document.getElementById('hr_reject_id').value = id;
     document.getElementById('rejectEmpName').textContent = '👤 '+name;
     document.getElementById('rejectModal').classList.add('open');
 }
